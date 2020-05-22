@@ -7,6 +7,7 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
+import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -19,30 +20,48 @@ class RestApiTest(private val mContext: Context) {
 //		val macAddress = DataRepository.getInstance(mContext).macAddress
         val macAddress = "70:2e:b9:f8:b8:a2"
         Log.d(TAG, "macAddress = $macAddress")
-//		RestApiManager.POST(object : Callback<EnrollResponseBody> {
-//			override fun onResponse(call: Call<EnrollResponseBody?>, response: Response<EnrollResponseBody?>) {
-//				Log.d(TAG, "response.isSuccessful() = " + response.isSuccessful)
+		RestApiManager.getCode(object : Callback<JsonObject> {
+			override fun onResponse(call: Call<JsonObject?>, response: Response<JsonObject?>) {
+				Log.d(TAG, "response.isSuccessful() = " + response.isSuccessful)
+                if ( response.isSuccessful) {
+                    val body = response.body()
+                    val instance_id = body?.get("instance_id")
+                    val code = body?.get("code")
+                    val mqtt_host = body?.get("mqtt_host")
+                    Log.d(TAG, "instance_id = " + instance_id)
+					Log.d(TAG, "code = " + code)
+					Log.d(TAG, "mqtt_host = " + mqtt_host)
+                }
 //				if (response.body() is EnrollResponseBody) {
-//					val body = response.body() as EnrollResponseBody
+//					val body = response.body()
 //					Log.d(TAG, "instance_id = " + body.instance_id)
 //					Log.d(TAG, "instance_id = " + body.code)
 //					Log.d(TAG, "instance_id = " + body.mqtt_host)
 //
 //				}
-//			}
-//			override fun onFailure(call: Call<EnrollResponseBody?>, t: Throwable) {
-//				Log.d(TAG, "t = " + t)
-//
-//			}
-//		}, macAddress)
-		GlobalScope.launch {
-			val result = RestApiManager.requestGetCode(macAddress)
-//			val body = response.body() as EnrollResponseBody
+			}
+			override fun onFailure(call: Call<JsonObject?>, t: Throwable) {
+				Log.d(TAG, "t = " + t)
 
-			Log.d(TAG, "result = ${result.toString()}" )
-//			Log.d(TAG, "instance_id = " + body.code)
-//			Log.d(TAG, "instance_id = " + body.mqtt_host)
-		}
+			}
+		}, macAddress)
+
+//        val result = RestApiManager.getCode(macAddress)
+////			val body = response.body() as EnrollResponseBody
+//
+//        Log.d(TAG, "result = ${result.toString()}" )
+////			Log.d(TAG, "instance_id = " + body.code)
+////			Log.d(TAG, "instance_id = " + body.mqtt_host)
+
+
+//		GlobalScope.launch {
+//			val result = RestApiManager.getCode(macAddress)
+////			val body = response.body() as EnrollResponseBody
+//
+//			Log.d(TAG, "result = ${result.toString()}" )
+////			Log.d(TAG, "instance_id = " + body.code)
+////			Log.d(TAG, "instance_id = " + body.mqtt_host)
+//		}
     }
 
     @TestOnly

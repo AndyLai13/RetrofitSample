@@ -33,13 +33,14 @@ object RestApiManager {
 //        call.execute()
 //    }
 
-    suspend fun getCode(mac_address: String): Result<EnrollResponseBody> {
-        return safeApiCall(call = {requestGetCode(mac_address)}, errorMessage = "error")
+    fun getCode(callback: Callback<JsonObject>, mac_address: String) {
+        val call = apiService.post(mac_address)
+        call.enqueue(callback)
     }
 
-    suspend fun requestGetCode(mac_address: String) : Result<EnrollResponseBody> {
-        return executeResponse(apiService.post(mac_address).await())
-    }
+//    fun POST(mac_address: String) {
+//        val call = apiService.post(mac_address)
+//    }
 
     fun checkInstanceIdExist(callback: Callback<JsonObject>, instanceId: String) {
         val call = apiService.checkInstanceIdExist(instanceId)
@@ -52,33 +53,7 @@ object RestApiManager {
 
         @FormUrlEncoded
         @POST("code")
-        fun post(@Field("mac_address") mac_address: String): Deferred<WanResponse<EnrollResponseBody>>
+        fun post(@Field("mac_address") mac_address: String): String
     }
 
-
-    suspend fun <T : Any> apiCall(call: suspend () -> WanResponse<T>): WanResponse<T> {
-        return call.invoke()
-    }
-
-    suspend fun <T : Any> safeApiCall(call: suspend () -> Result<T>, errorMessage: String): Result<T> {
-        return try {
-            call()
-        } catch (e: Exception) {
-            // An exception was thrown when calling the API so we're converting this to an IOException
-            Result.Error(IOException(errorMessage, e))
-        }
-    }
-
-    suspend fun <T : Any> executeResponse(response: WanResponse<T>, successBlock: (suspend CoroutineScope.() -> Unit)? = null,
-                                          errorBlock: (suspend CoroutineScope.() -> Unit)? = null): Result<T> {
-        return coroutineScope {
-            if (response.errorCode == -1) {
-                errorBlock?.let { it() }
-                Result.Error(IOException(response.errorMsg))
-            } else {
-                successBlock?.let { it() }
-                Result.Success(response.data)
-            }
-        }
-    }
 }

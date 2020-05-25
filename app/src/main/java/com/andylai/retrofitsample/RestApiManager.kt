@@ -5,9 +5,7 @@ import com.google.gson.JsonObject
 import com.andylai.retrofitsample.dataclass.EnrollBody
 import com.andylai.retrofitsample.dataclass.EnrollResponseBody
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -28,19 +26,41 @@ object RestApiManager {
         .build()
     private val apiService = retrofit.create(APIService::class.java)
 
-//    fun POST(callback: Callback<EnrollResponseBody>, mac_address: String) {
-//        val call = apiService.post(mac_address)
-//        call.execute()
-//    }
 
-    fun getCode(callback: Callback<JsonObject>, mac_address: String) {
-        val call = apiService.post(mac_address)
-        call.enqueue(callback)
+    suspend fun <T : Any> apiCall(call: suspend () -> WanResponse<T>): WanResponse<T> {
+        return call.invoke()
     }
 
-//    fun POST(mac_address: String) {
-//        val call = apiService.post(mac_address)
-//    }
+    suspend fun <T : Any> safeApiCall(call: suspend () -> Result<T>, errorMessage: String): Result<T> {
+        return try {
+            call()
+        } catch (e: Exception) {
+            // An exception was thrown when calling the API so we're converting this to an IOException
+            Result.Error(IOException(errorMessage, e))
+        }
+    }
+
+    suspend fun <T : Any> executeResponse(response: WanResponse<T>, successBlock: (suspend CoroutineScope.() -> Unit)? = null,
+                                          errorBlock: (suspend CoroutineScope.() -> Unit)? = null): Result<T> {
+        return coroutineScope {
+            if (response.errorCode == -1) {
+                errorBlock?.let { it() }
+                Result.Error(IOException(response.errorMsg))
+            } else {
+                successBlock?.let { it() }
+                Result.Success(response.data)
+            }
+        }
+    }
+
+    suspend fun getCode(mac_address: String) :Result<EnrollResponseBody>{
+        return try {
+            val result = apiService.getCode(mac_address).await()
+            Result.Success(result)
+        } catch (e: Throwable) {
+            Result.Error(e)
+        }
+    }
 
     fun checkInstanceIdExist(callback: Callback<JsonObject>, instanceId: String) {
         val call = apiService.checkInstanceIdExist(instanceId)
@@ -53,7 +73,7 @@ object RestApiManager {
 
         @FormUrlEncoded
         @POST("code")
-        fun post(@Field("mac_address") mac_address: String): String
+        fun getCode(@Field("mac_address") mac_address: String): Deferred<EnrollResponseBody>
     }
 
 }
